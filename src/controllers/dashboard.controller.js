@@ -73,6 +73,65 @@ const getChannelStats = asyncHandler(async(req,res)=>{
     .json(new ApiResponse(200,{stats},"channel data fetched successfully"))
 })
 
+const getLikedVideos = asyncHandler(async(req,res)=>{
+    const userId = req.user._id
+    const {pageNumber,limitNumber} = req.query
+    const page = parseInt(pageNumber) || 1
+    const limit = parseInt(limitNumber) || 5
+    const skip = (page - 1) * limit
 
 
-export {getChannelStats}
+    const totalLikedVideos = await Like.countDocuments({
+        likedBy:new mongoose.Types.ObjectId(userId)
+
+    })
+
+    const likedVideos = await Like.aggregate([
+        {
+            $match:{likedBy:new mongoose.Types.ObjectId(userId)}
+        },
+        {
+            $lookup:{
+                from:"videos",
+                localField:"video",
+                foreignField:"_id",
+                as:"videoDetails",
+                pipeline:[
+                    {
+                        $project:{
+                            _id:1,
+                            title:1,
+                            thumbnail:1,
+                            videoFile:1
+                        }
+                    }
+                ]
+
+            }
+        },
+        {
+            $unwind:"$videoDetails"
+        },{
+            $skip:skip
+        },{
+            $limit:limit
+        }
+        ,
+        {
+            $project:{
+                _id:1,
+                videoDetails:1,
+                totalLikedVideos:1
+            }
+        }
+    ])
+
+  
+    return res
+    .status(200)
+    .json(new ApiResponse(200,{likedVideos,totalLikedVideos},"liked videos fetched"))
+
+})
+
+
+export {getChannelStats,getLikedVideos}
