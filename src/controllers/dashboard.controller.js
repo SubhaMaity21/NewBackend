@@ -73,65 +73,132 @@ const getChannelStats = asyncHandler(async(req,res)=>{
     .json(new ApiResponse(200,{stats},"channel data fetched successfully"))
 })
 
-const getLikedVideos = asyncHandler(async(req,res)=>{
-    const userId = req.user._id
-    const {pageNumber,limitNumber} = req.query
-    const page = parseInt(pageNumber) || 1
-    const limit = parseInt(limitNumber) || 5
-    const skip = (page - 1) * limit
+const getLikedVideos = asyncHandler(async(req, res) => {
+    const userId = req.user._id;
+    const {pageNumber, limitNumber} = req.query;
+    const page = parseInt(pageNumber) || 1;
+    const limit = parseInt(limitNumber) || 5;
+    const skip = (page - 1) * limit;
 
+    
+    const videoCount = await Like.aggregate([
+        {
+            $match: {
+                likedBy: new mongoose.Types.ObjectId(userId)
+            }
+        },
+        {
+            $lookup: {
+                from: "videos",
+                localField: "video",
+                foreignField: "_id",
+                as: "videoDetails"
+            }
+        },
+        {
+            
+            $match: {
+                "videoDetails": { $ne: [] }
+            }
+        },
+        {
+            $count: "total"
+        }
+    ]);
 
-    const totalLikedVideos = await Like.countDocuments({
-        likedBy:new mongoose.Types.ObjectId(userId)
-
-    })
+    const totalLikedVideos = videoCount[0]?.total || 0;
 
     const likedVideos = await Like.aggregate([
         {
-            $match:{likedBy:new mongoose.Types.ObjectId(userId)}
+            $match: {
+                likedBy: new mongoose.Types.ObjectId(userId)
+            }
         },
         {
-            $lookup:{
-                from:"videos",
-                localField:"video",
-                foreignField:"_id",
-                as:"videoDetails",
-                pipeline:[
+            $lookup: {
+                from: "videos",
+                localField: "video",
+                foreignField: "_id",
+                as: "videoDetails",
+                pipeline: [
                     {
-                        $project:{
-                            _id:1,
-                            title:1,
-                            thumbnail:1,
-                            videoFile:1
+                        $lookup: {
+                            from: "users",
+                            localField: "owner",
+                            foreignField: "_id",
+                            as: "owner",
+                            pipeline: [
+                                {
+                                    $project: {
+                                        _id: 1,
+                                        fullName: 1,
+                                        username: 1,
+                                        avatar: 1
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        $addFields: {
+                            owner: { $first: "$owner" }
+                        }
+                    },
+                    {
+                        $project: {
+                            _id: 1,
+                            title: 1,
+                            thumbnail: 1,
+                            videoFile: 1,
+                            duration: 1,
+                            views: 1,
+                            owner: 1,
+                            createdAt: 1
                         }
                     }
                 ]
-
             }
         },
         {
-            $unwind:"$videoDetails"
-        },{
-            $skip:skip
-        },{
-            $limit:limit
-        }
-        ,
+            
+            $match: {
+                "videoDetails": { $ne: [] }
+            }
+        },
         {
-            $project:{
-                _id:1,
-                videoDetails:1,
-                totalLikedVideos:1
+            $unwind: "$videoDetails"
+        },
+        {
+            $skip: skip
+        },
+        {
+            $limit: limit
+        },
+        {
+            $project: {
+                _id: 1,
+                video: 1, 
+                videoDetails: 1
             }
         }
-    ])
+    ]);
 
   
-    return res
-    .status(200)
-    .json(new ApiResponse(200,{likedVideos,totalLikedVideos},"liked videos fetched"))
 
-})
+    return res
+        .status(200)
+        .json(new ApiResponse(
+            200, 
+            {
+                likedVideos,
+                totalLikedVideos,
+                currentPage: page,
+                totalPages: Math.ceil(totalLikedVideos / limit),
+                hasMore: page < Math.ceil(totalLikedVideos / limit)
+            }, 
+            "Liked videos fetched successfully"
+        ));
+});
 
 
 export {getChannelStats,getLikedVideos}
