@@ -315,15 +315,15 @@ if(video[0].owner._id.toString() !== req.user._id.toString()){
         );
         
         // Then remove the video if it exists in the array
-        const pullResult = await User.updateOne(
+         await User.updateOne(
             { _id: req.user._id },
             { $pull: { watchHistory: new mongoose.Types.ObjectId(videoId) } }
             
             
         );
-        console.log("pull result",pullResult);
+        
         // Finally add it to the beginning 
-        const pushResult =await User.updateOne(
+        await User.updateOne(
             { _id: req.user._id },
             { 
                 $push: { 
@@ -334,9 +334,8 @@ if(video[0].owner._id.toString() !== req.user._id.toString()){
                 } 
             }
         );
-        console.log("push result",pushResult);
-        const rawUser= await User.findById(req.user._id)
-        console.log(rawUser.watchHistory)
+        
+        
         console.log(`Added video ${videoId} to watch history`);
 
         // await User.updateOne(

@@ -67,7 +67,7 @@ import { ApiError } from './ApiError.js';
             const parts = urlWithoutParams.split('/');
             
             // Find the 'upload' segment
-            let uploadIndex = parts.indexOf('upload');
+             uploadIndex = parts.indexOf('upload');
             if (uploadIndex === -1) {
                 // Try other resource types
                 const resourceTypes = ['video', 'raw', 'image'];
