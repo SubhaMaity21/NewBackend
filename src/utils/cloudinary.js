@@ -19,11 +19,11 @@ import { ApiError } from './ApiError.js';
         const response = await  cloudinary.uploader.upload(localFilePath,{
                 resource_type:"auto"
             })
-            fs.unlinkSync(localFilePath) // remove the locally stored file
+            fs.unlinkSync(localFilePath) 
             return response
             
         } catch (error) {
-            fs.unlinkSync(localFilePath) // remove the locally stored file
+            fs.unlinkSync(localFilePath) 
             return null
         }
       
@@ -35,7 +35,7 @@ import { ApiError } from './ApiError.js';
             
             const result = await cloudinary.uploader.destroy(publicId, {
                 resource_type: resourceType,
-                invalidate: true  // <- This forces CDN cache invalidation
+                invalidate: true  
             });
             
             return result;
@@ -52,24 +52,23 @@ import { ApiError } from './ApiError.js';
         if (!url) return null;
         
         try {
-            // For URLs with version number like:
-            // https://res.cloudinary.com/demo/image/upload/v1234567890/folder/image.jpg
+           
             
-            // First, check if it's a Cloudinary URL
+            
             if (!url.includes('cloudinary.com')) {
                 return null;
             }
             
-            // Remove any query parameters
+            
             const urlWithoutParams = url.split('?')[0];
             
-            // Split by '/'
+           
             const parts = urlWithoutParams.split('/');
             
-            // Find the 'upload' segment
+            
             let uploadIndex = parts.indexOf('upload');
             if (uploadIndex === -1) {
-                // Try other resource types
+               
                 const resourceTypes = ['video', 'raw', 'image'];
                 for (const type of resourceTypes) {
                     const typeIndex = parts.indexOf(type);
@@ -84,11 +83,11 @@ import { ApiError } from './ApiError.js';
                 }
             }
             
-            // Get everything after 'upload' and the version number (if exists)
+            
             const versionIndex = parts[uploadIndex + 1].startsWith('v') ? uploadIndex + 1 : uploadIndex;
             const publicIdParts = parts.slice(versionIndex + 1);
             
-            // Join the parts and remove file extension
+            
             const publicId = publicIdParts.join('/').split('.')[0];
             
             return publicId;
