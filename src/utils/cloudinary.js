@@ -29,44 +29,74 @@ import { ApiError } from './ApiError.js';
       
     }
 
-
-    const deleteFromCloudinary = async(publicId)=>{
+    const deleteFromCloudinary = async(publicId, resourceType = "image") => {
         try {
-            if(!publicId) return null
-            const result = await cloudinary.uploader.destroy(publicId)
-            return result
+            if(!publicId) return null;
+            
+            const result = await cloudinary.uploader.destroy(publicId, {
+                resource_type: resourceType,
+                invalidate: true  // <- This forces CDN cache invalidation
+            });
+            
+            return result;
         } catch (error) {
-            throw new ApiError(500,error.message)
+            console.error("Error deleting from Cloudinary:", error);
+            throw new ApiError(500, error.message);
         }
-    }
+    };
 
 
 
 
-    const extractPublicId = (url)=>{
-        if(!url){
-            return null
-        }
-
+    const extractPublicId = (url) => {
+        if (!url) return null;
+        
         try {
-              
-    const urlParts = url.split('/');
-    const fileNameWithExtension = urlParts[urlParts.length - 1];
-    const publicId = fileNameWithExtension.split('.')[0];
-    
-    // If the file is in a folder, include the folder path
-    const uploadIndex = urlParts.indexOf('upload');
-    if (uploadIndex !== -1 && uploadIndex < urlParts.length - 2) {
-      const pathParts = urlParts.slice(uploadIndex + 2);
-      return pathParts.join('/').split('.')[0]; 
-    }
-    
-    return publicId;
+            // For URLs with version number like:
+            // https://res.cloudinary.com/demo/image/upload/v1234567890/folder/image.jpg
+            
+            // First, check if it's a Cloudinary URL
+            if (!url.includes('cloudinary.com')) {
+                return null;
+            }
+            
+            // Remove any query parameters
+            const urlWithoutParams = url.split('?')[0];
+            
+            // Split by '/'
+            const parts = urlWithoutParams.split('/');
+            
+            // Find the 'upload' segment
+            const uploadIndex = parts.indexOf('upload');
+            if (uploadIndex === -1) {
+                // Try other resource types
+                const resourceTypes = ['video', 'raw', 'image'];
+                for (const type of resourceTypes) {
+                    const typeIndex = parts.indexOf(type);
+                    if (typeIndex !== -1) {
+                        uploadIndex = typeIndex;
+                        break;
+                    }
+                }
+                
+                if (uploadIndex === -1) {
+                    return null; // Not a standard Cloudinary URL
+                }
+            }
+            
+            // Get everything after 'upload' and the version number (if exists)
+            const versionIndex = parts[uploadIndex + 1].startsWith('v') ? uploadIndex + 1 : uploadIndex;
+            const publicIdParts = parts.slice(versionIndex + 1);
+            
+            // Join the parts and remove file extension
+            const publicId = publicIdParts.join('/').split('.')[0];
+            
+            return publicId;
         } catch (error) {
-            throw new ApiError(500,error.message)
+            console.error("Error extracting public ID:", error);
+            return null;
         }
-    }
-
+    };
      // Upload an image
     //     const uploadResult = await cloudinary.uploader
     //     .upload(

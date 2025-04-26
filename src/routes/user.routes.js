@@ -9,9 +9,11 @@ import {loginUser,
      getuserChannelprofile, 
      getCurrentuser, 
      getWatchHistory}  from "../controllers/user.controller.js"
+     
+import { getAllVideos,publishAVideo } from "../controllers/video.controller.js";
 import {upload} from "../middlewares/multer.middleware.js"
 import { verifyJWT } from "../middlewares/auth.middleware.js";
-const router = Router()
+export const router = Router()
 
 router.route("/register").post(
     upload.fields([
@@ -37,4 +39,15 @@ router.route("/update-avatar").patch(
     updateAvatar)
 router.route("/c/:username").get(verifyJWT,getuserChannelprofile)
 router.route("/history").get(verifyJWT,getWatchHistory)
+
+router.route("/publish").post(
+    verifyJWT,
+    upload.fields([
+        { name: "videoFile", maxCount: 1 },
+        { name: "thumbnail", maxCount: 1 }
+    ]),
+    publishAVideo
+);
+
+router.route("/video").get(getAllVideos);
 export default router;
